@@ -3,16 +3,24 @@ const puppeteer = require('puppeteer');
 async function scrapeYouTubeRecommendations() {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
-  await page.goto('https://www.youtube.com/feed/recommended', { waitUntil: 'networkidle2' });
+  try {
+    await page.goto('https://www.youtube.com/feed/recommended', { waitUntil: 'networkidle2' });
 
-  const videoUrls = await page.evaluate(() => {
-    const videos = Array.from(document.querySelectorAll('#video-title'));
-    return videos.map(video => video.href);
-  });
+    // Wait for the videos to load
+    //prob wrong element to wait for
+    await page.waitForSelector('ytd-rich-item-renderer', { timeout: 60000 });
 
-  await browser.close();
-  return videoUrls;
+    await page.waitForTimeout(5000);
+
+    const videoUrls = await page.evaluate(() => {
+      const videos = Array.from(document.querySelectorAll('#video-title'));
+      return videos.map(video => video.href);
+    });
+
+    return videoUrls;
+  } finally {
+    await browser.close();
+  }
 }
 
 module.exports = scrapeYouTubeRecommendations;
-console.log('Scarped finished');
