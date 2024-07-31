@@ -1,57 +1,119 @@
 const puppeteer = require('puppeteer');
+const fs = require('fs');
+
+const SESSION_FILE_PATH = './youtube_session.json';
 
 async function scrapeYouTubeRecommendations() {
-  const browser = await puppeteer.launch({ headless: true });
-  const page = await browser.newPage();
-  try {
-    const browser = await puppeteer.launch({headless: true});
+try
+{
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-infobars',
+        '--window-position=0,0',
+        '--ignore-certifcate-errors',
+        '--ignore-certifcate-errors-spki-list',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080',
+        '--hide-scrollbars',
+        '--enable-automation',
+        '--disable-blink-features=AutomationControlled'
+    ],});
+
     const page = await browser.newPage();
 
-    await page.goto('https://www.youtube.com/user/PewDiePie/videos');
-    var links =[]
-    for (var i=1; i<=30; i++){ 
-      //grab href and src(thumbnail) of each video
+    // Load session data if it exists
+    const sessionData = loadSession();
+    if (sessionData) 
+      {
+      try 
+      {
+          await page.setCookie(...sessionData.cookies);
+          await page.evaluateOnNewDocument(sessionData => {
+            localStorage.clear();
+            for (let key in sessionData.localStorage) 
+              {
+                localStorage.setItem(key, sessionData.localStorage[key]);
+              }
+        }, sessionData);
+      }
+      catch (error) 
+      {
+        console.error('Error setting cookies or localStorage:', error);
+      }
+    }
 
-      var href = await page.$$eval("ytd-rich-item-renderer.ytd-rich-grid-renderer:nth-child(1) > div:nth-child(1) > ytd-rich-grid-media:nth-child(1) > div:nth-child(1) > div:nth-child(3) > div:nth-child(2) > h3:nth-child(1) > a:nth-child(2)", el => el.map(x => x.getAttribute("href")));
-      href="https://www.youtube.com"+href;
+    await page.goto('https://www.youtube.com');
 
-      links.push(href);
+    // Check if login is required
+    const isLoggedIn = await page.evaluate(() => {
+        return !!document.querySelector('ytd-masthead button#avatar-btn');
+    });
+
+    if (!isLoggedIn) {
+        console.log("Please log in to YouTube...");
+
+        // Wait for the user to log in manually
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+        // Save session data
+        await saveSession(page);
+    }
+
+    var links = [];
+    for (var i = 1; i <= 30; i++) 
+      {
+        var selector = `ytd-rich-item-renderer.ytd-rich-grid-renderer:nth-child(${i}) > div:nth-child(1) > ytd-rich-grid-media:nth-child(1) > div:nth-child(1) > div:nth-child(1) > ytd-thumbnail:nth-child(1) > a:nth-child(1)`;
+        var href = await page.$eval(selector, el => el.getAttribute("href")).catch(err => null);
+        if (href) 
+          {
+            href = "https://www.youtube.com" + href;
+            links.push(href);
+        }
+    }
+
+    return links;
   }
-  return links;
-
-  } finally {
+  finally
+  {
     await browser.close();
   }
 }
 
+
   
 
-  /*
-    const result = await page.evaluate(() => {
-      let viddata = []; // Create an empty array that will store our data
-      let channelName = document.querySelector('ytd-channel-name.ytd-c4-tabbed-header-renderer > div:nth-child(1) > div:nth-child(1) > yt-formatted-string:nth-child(1)').innerHTML;
+function loadSession() {
+    if (fs.existsSync(SESSION_FILE_PATH)) {
+        const sessionData = fs.readFileSync(SESSION_FILE_PATH);
+        return JSON.parse(sessionData);
+    }
+    return null;
+}
 
-      var numvids =document.querySelector('div.ytd-grid-renderer:nth-child(2)').childElementCount;
-      console.log("THERE ARE "+numvids+" VIDEOS");
-      for (var i=1; i<numvids; i++){ // Loop through each video
+async function saveSession(page) {
+    const cookies = await page.cookies();
+    const localStorage = await page.evaluate(() => {
+        let json = {};
+        for (let key in localStorage) {
+            json[key] = localStorage.getItem(key);
+        }
+        return json;
+    });
+    const sessionData = { cookies, localStorage };
+    fs.writeFileSync(SESSION_FILE_PATH, JSON.stringify(sessionData));
+}
 
-          var title = document.querySelector('ytd-grid-video-renderer.style-scope:nth-child('+i+') > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > h3:nth-child(1) > a:nth-child(2)').innerHTML; 
-          var views = document.querySelector('ytd-grid-video-renderer.style-scope:nth-child('+i+') > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > span:nth-child(1)').innerHTML;
-          var date = document.querySelector('ytd-grid-video-renderer.style-scope:nth-child('+i+') > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > span:nth-child(2)').innerHTML;
+// Example usage
+scrapeYouTubeRecommendations().then(links => {
+    console.log(links);
+}).catch(error => {
+    console.error(error);
+});
 
-          viddata.push({title,views,date,channelName});  
-      }
-
-      return viddata; // Return our data array
-
-  //merge href and src with other data
-  for (var i=0; i<29; i++){
-      result[i].links=links[i];
-  }
-
-
-  browser.close();
-  return result; // Return the data
-*/
 
 module.exports = scrapeYouTubeRecommendations;
