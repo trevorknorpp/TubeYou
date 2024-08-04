@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
 
 const SESSION_FILE_PATH = './youtube_session.json';
+const COOKIE_SET_DELAY = 100; // Delay in milliseconds between setting each cookie
 
 async function scrapeYouTubeRecommendations() {
   const browser = await puppeteer.launch({
@@ -41,34 +42,24 @@ async function scrapeYouTubeRecommendations() {
             return cookie.name && cookie.value && cookie.domain && cookie.path && typeof cookie.expires === 'number';
           });
 
-          if (validCookies.length === sessionData.cookies.length) {
-            await page.setCookie(...validCookies);
-          } else {
-            console.error('Some cookies are invalid and will be ignored:', sessionData.cookies.filter(cookie => !validCookies.includes(cookie)));
-            await page.setCookie(...validCookies); // Set only valid cookies
+          for (const [index, cookie] of validCookies.entries()) {
+            try {
+              await page.setCookie(cookie);
+              console.log(`Cookie ${index + 1} set successfully.`);
+              await new Promise(resolve => setTimeout(resolve, COOKIE_SET_DELAY));
+            } catch (error) {
+              console.error(`Error setting cookie ${index + 1}:`, error);
+            }
           }
         } else {
           console.error('Invalid cookie format in session data.');
         }
-
-        // Validate and set localStorage
-        if (sessionData.localStorage && typeof sessionData.localStorage === 'object') {
-          console.log('Loaded localStorage:', sessionData.localStorage);
-          await page.evaluateOnNewDocument(localStorageData => {
-            localStorage.clear();
-            for (let key in localStorageData) {
-              localStorage.setItem(key, localStorageData[key]);
-            }
-          }, sessionData.localStorage);
-        } else {
-          console.error('Invalid localStorage format in session data.');
-        }
       } catch (error) {
-        console.error('Error setting cookies or localStorage:', error);
+        console.error('Error setting cookies:', error);
       }
     }
 
-    await page.goto('https://www.youtube.com');
+    await page.goto('https://www.youtube.com', { waitUntil: 'networkidle2' });
 
     // Check if login is required
     let isLoggedIn = await page.evaluate(() => {
@@ -117,15 +108,8 @@ async function loadSession() {
 async function saveSession(page) {
   try {
     const cookies = await page.cookies();
-    const localStorage = await page.evaluate(() => {
-      let json = {};
-      for (let key in localStorage) {
-        json[key] = localStorage.getItem(key);
-      }
-      return json;
-    });
-    console.log('Saving session data:', { cookies, localStorage });
-    const sessionData = { cookies, localStorage };
+    console.log('Saving cookies:', cookies);
+    const sessionData = { cookies };
     await fs.writeFile(SESSION_FILE_PATH, JSON.stringify(sessionData));
   } catch (error) {
     console.error('Error saving session:', error);

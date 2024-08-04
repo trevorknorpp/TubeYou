@@ -1,0 +1,14 @@
+{
+  "yt-remote-device-id": "{\"data\":\"26ef85a6-6ff6-47fe-b5a0-f3baec17d7fa\",\"expiration\":1754320070794,\"creation\":1722784070794}",
+  "ytidb::LAST_RESULT_ENTRY_KEY": "{\"data\":{\"hasSucceededOnce\":true},\"expiration\":1725376159428,\"creation\":1722784159428}",
+  "yt-remote-connected-devices": "{\"data\":\"[]\",\"expiration\":1722870559398,\"creation\":1722784159398}",
+  "114012488840430588763||108679935834559798313::yt-player::yt-player-lv": "{\"data\":\"{}\",\"creation\":1722784159452}",
+  "yt-icons-last-purged": "1719587269698",
+  "yt-player-bandwidth": "{\"data\":\"{\\\"delay\\\":0.03319986979166667,\\\"stall\\\":0,\\\"byterate\\\":9997424.311588371,\\\"init\\\":1722784100787.8,\\\"interruptions\\\":[{\\\"stamp\\\":1722783600000,\\\"net\\\":47009,\\\"max\\\":45496}]}\",\"expiration\":1725376151484,\"creation\":1722784151484}",
+  "length": null,
+  "clear": null,
+  "getItem": null,
+  "key": null,
+  "removeItem": null,
+  "setItem": null
+}
