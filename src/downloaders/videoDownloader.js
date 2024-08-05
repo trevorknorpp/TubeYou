@@ -9,9 +9,10 @@ const SAVED_FRAMES_PATH = './savedFramesTemp'; //Stores frames here
 //download frames of each video and store them in seperate subpaths
 async function downloadFrames(videoUrls) 
 {
-    if (!fs.existsSync(SAVED_FRAMES_PATH)) {
-        fs.mkdirSync(SAVED_FRAMES_PATH, { recursive: true });
-      }
+    if (fs.existsSync(SAVED_FRAMES_PATH)) 
+        fs.rmSync(SAVED_FRAMES_PATH, { recursive: true, force: true });
+
+    fs.mkdirSync(SAVED_FRAMES_PATH, { recursive: true });
 
     //make file path for each url and call method to save frames to that path
     for (let i = 0; i < videoUrls.length; i++) 
@@ -19,10 +20,10 @@ async function downloadFrames(videoUrls)
         const videoUrl = videoUrls[i];
         const frameDir = path.join(SAVED_FRAMES_PATH, `video${i + 1}`);
         
-        if (!fs.existsSync(frameDir)) 
-        {
-          fs.mkdirSync(frameDir, { recursive: true });
-        }
+        if (fs.existsSync(frameDir)) 
+            fs.rmSync(frameDir, { recursive: true, force: true });
+
+        fs.mkdirSync(frameDir, { recursive: true });
 
         try
         {
@@ -37,10 +38,11 @@ async function downloadFrames(videoUrls)
 
 async function downloadFirst20FramesToPath(videoUrl, frameDir) 
 {
-    if (!fs.existsSync(frameDir)) 
-    {
-        fs.mkdirSync(frameDir, { recursive: true });
-    }
+    //delete if exists
+    if (fs.existsSync(frameDir)) 
+        fs.rmSync(frameDir, { recursive: true, force: true });
+
+    fs.mkdirSync(frameDir, { recursive: true });
 
     return new Promise((resolve, reject) => {
         const videoStream = ytdl(videoUrl, { quality: 'highestvideo' });
